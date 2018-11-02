@@ -1,0 +1,6 @@
+name = SP Datadrop
+description =  Receives data from spwebformsync and pushes data to CiviCRM contact.
+core = 7.x
+package = sprbs
+dependencies[] = sprbs
+dependencies[] = spcivipush

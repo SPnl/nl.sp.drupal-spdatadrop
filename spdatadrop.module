@@ -1,0 +1,221 @@
+<?php
+
+/**
+ * @file
+ * Main module file.
+ */
+
+/**
+ * Implements hook_init().
+ */
+function spdatadrop_init() {
+  module_load_include("inc", "spdatadrop", "spdatadrop.processing");
+  module_load_include("inc", "spdatadrop", "spdatadrop.settings");
+}
+
+/**
+ * Implements hook_menu().
+ */
+function spdatadrop_menu() {
+  $items = array();
+
+  $items['admin/config/sp/spdatadrop'] = array(
+    'title' => 'SP Datadrop',
+    'type' => MENU_NORMAL_ITEM,
+    'page callback' => 'spdatadrop_overview',
+    'file' => 'spdatadrop.admin.inc',
+    'access callback' => 'sprbs_access_check',
+  );
+
+  $items['admin/config/sp/spdatadrop/overview'] = array(
+    'title' => 'Wachtrij',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'access callback' => 'sprbs_access_check',
+    'weight' => '0',
+  );
+
+  $items['admin/config/sp/spdatadrop/settings'] = array(
+    'title' => 'Instellingen',
+    'type' => MENU_LOCAL_TASK,
+    'page callback'  => 'drupal_get_form',
+    'page arguments' => array('spdatadrop_settings_form'),
+    'file' => 'spdatadrop.admin.inc',
+    'access callback' => 'sprbs_access_check',
+    'weight' => '1',
+  );
+
+  $items['spdatadrop'] = array(
+    'title' => 'Datadrop',
+    'type' => MENU_CALLBACK,
+    'page callback' => 'spdatadrop_process_post_data',
+    'access arguments' => array('access content'),
+  );
+
+  $cron_key = variable_get('cron_key');
+  $items['spdatadrop/' . $cron_key] = array(
+    'title' => 'SP Datadrop cron',
+    'type' => MENU_CALLBACK,
+    'page callback' => 'spdatadrop_customcron',
+    'access arguments' => array('access content'),
+  );
+
+  return $items;
+}
+
+/**
+ * Syncs not yet synced webform submissions.
+ */
+function spdatadrop_customcron() {
+  $sync_type = variable_get('spdatadrop_sync_type');
+  if ($sync_type == 'cron') {
+    set_time_limit(120);
+    watchdog('spdatadrop', 'Custom cron sync started.');
+    // Get submissions to sync.
+    if ($max_cron_number > 0) {
+      $max_cron_number = variable_get('spdatadrop_cron_number', 0);
+      spdatadrop_push_contacts($max_cron_number);
+    }
+    watchdog('spdatadrop', 'Custom cron sync ended.');
+  }
+}
+
+/**
+ * Process data result.
+ */
+function spdatadrop_push_contact_process_result($id, $result) {
+  $error = FALSE;
+  if ($result === FALSE) {
+    spdatadrop_store_submission_sync_state($id, 'error');
+    $error = TRUE;
+  }
+  elseif ($result === 'insufficient data') {
+    spdatadrop_store_submission_sync_state($id, 'insufficient data');
+    $error = TRUE;
+  }
+  elseif ($result === 'contact id not found') {
+    spdatadrop_store_submission_sync_state($id, 'contact id not found');
+    $error = TRUE;
+  }
+  else {
+    spdatadrop_store_submission_sync_state($id, 'synced');
+  }
+  return $error;
+}
+
+/**
+ * Stores sync state.
+ */
+function spdatadrop_store_submission_sync_state($id, $state) {
+  $states = array(
+    'unprocessed' => '0',
+    'synced' => '1',
+    'error' => '2',
+    'insufficient data' => '3',
+    'contact id not found' => '4',
+  );
+  if (!empty($id) && isset($states[$state])) {
+    $new_state = $states[$state];
+    db_update('spdatadrop_syncstate')
+      ->fields(array(
+        'state' => $new_state,
+      ))
+      ->condition('id', $id)
+      ->execute();
+  }
+}
+
+/**
+ * Process data from post.
+ */
+function spdatadrop_process_post_data() {
+  $secret = variable_get('spdatadrop_secret', NULL);
+  if (empty($secret) && $_POST['secret'] === $secret) {
+    watchdog('spdatadrop', 'Unauthorized spdatadrop.', array(), WATCHDOG_WARNING);
+    drupal_add_http_header('Status', '401 Unauthorized');
+  }
+  else {
+    // Store data in database.
+    if (isset($_POST['submission_data'])) {
+      $fields = array();
+      // Add submission data.
+      $fields['submission_data'] = json_encode($_POST['submission_data']);
+      // Add source data.
+      if (isset($_POST['source_data'])) {
+        $source_fields = array(
+          'source_domain',
+          'source_title',
+          'source_id',
+          'submission_id',
+        );
+        foreach ($source_fields as $source_field) {
+          if (isset($_POST['source_data'][$source_field])) {
+            $fields[$source_field] = $_POST['source_data'][$source_field];
+          }
+        }
+      }
+      // Add debug info.
+      if (isset($_POST['debug_info'])) {
+        $fields['debug_info'] = json_encode($_POST['debug_info']);
+      }
+      // Add state.
+      $fields['state'] = 0;
+      db_insert('spdatadrop_syncstate')
+        ->fields($fields)
+        ->execute();
+      // Log.
+      watchdog('spdatadrop', 'Queued submission id @sid from @domain (@title).', array(
+        '@sid' => $_POST['source_data']['submission_id'],
+        '@title' => $_POST['source_data']['source_title'],
+        '@domain' => $_POST['source_data']['source_domain'],
+      ));
+    }
+    else {
+      watchdog('spdatadrop', 'Missing data spdatadrop.', array(), WATCHDOG_WARNING);
+      drupal_add_http_header('Status', '400 Bad request');
+    }
+    return;
+  }
+}
+
+/**
+ * Push contacts to civicrm.
+ */
+function spdatadrop_push_contacts($number = 1) {
+  $contacts = array();
+  $sync_ids = array();
+  $query = "SELECT * FROM {spdatadrop_syncstate} WHERE state = 0 ORDER BY id ASC LIMIT " . $number;
+  $result = db_query($query);
+  if ($result) {
+    watchdog('spdatadrop', 'Pushing contacts to CiviCRM');
+    while ($row = $result->fetchAssoc()) {
+      watchdog('spdatadrop', 'Processing sync id. @id', array('@id' => $row['submission_id']));
+      $submission_data = json_decode($row['submission_data'], TRUE);
+      $source_data = array(
+        'source_domain' => $row['source_domain'],
+        'source_title' => $row['source_title'],
+        'source_id' => $row['source_id'],
+        'submission_id' => $row['submission_id'],
+      );
+      $debug_info = array(
+        'debug_info' => json_decode($row['debug_info'], TRUE),
+        'source_data' => $source_data,
+      );
+      $submission_data = array();
+      $push_result = spcivipush_push_contact($submission_data, $debug_info);
+      $error = spdatadrop_push_contact_process_result($row['id'], $push_result);
+      if (!$error) {
+        $sync_ids[] = $push_result;
+        if (!empty($sync_ids)) {
+          watchdog('spdatadrop', 'Pushed submission id @sid from @domain (@title).', array(
+            '@sid' => $row['submission_id'],
+            '@title' => $row['source_title'],
+            '@domain' => $row['source_domain'],
+          ));
+        }
+      }
+      watchdog('spdatadrop', 'Finished processing sync id. @id', array('@id' => $row['submission_id']));
+    }
+    watchdog('spdatadrop', 'Finished pushing contacts to CiviCRM');
+  }
+  return $sync_ids;
+}

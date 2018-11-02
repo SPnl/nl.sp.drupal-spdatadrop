@@ -1,0 +1,84 @@
+<?php
+
+/**
+ * @file
+ * Database definition.
+ */
+
+/**
+ * Implements hook_uninstall().
+ */
+function spdatadrop_uninstall() {
+  // Remove any variables we created.
+  variable_del('spdatadrop_sync_type');
+  variable_del('spdatadrop_cron_number');
+  variable_del('spdatadrop_secret');
+}
+
+/**
+ * Implements hook_schema().
+ */
+function spdatadrop_schema() {
+  $schema['spdatadrop_syncstate'] = array(
+    'description' => 'Status of datadrop submission processing (0=not processed, 1=synced, 2=error).',
+    'fields' => array(
+      'id' => array(
+        'description' => 'Primary key.',
+        'type' => 'serial',
+        'size' => 'big',
+        'not null' => TRUE,
+      ),
+      'source_domain' => array(
+        'description' => 'The data source domain.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+      ),
+      'source_title' => array(
+        'description' => 'A description of the data source (form title).',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+      ),
+      'source_id' => array(
+        'description' => 'The id of the data source (form id).',
+        'type' => 'int',
+        'size' => 'big',
+        'not null' => TRUE,
+      ),
+      'submission_id' => array(
+        'description' => 'The id of the data submission.',
+        'type' => 'int',
+        'size' => 'big',
+        'not null' => TRUE,
+      ),
+      'submission_data' => array(
+        'descripton' => 'Submisson data',
+        'type' => 'text',
+        'size' => 'normal',
+        'not null' => TRUE,
+      ),
+      'debug_info' => array(
+        'descripton' => 'Debug information',
+        'type' => 'text',
+        'size' => 'normal',
+        'not null' => TRUE,
+      ),
+      'state' => array(
+        'description' => 'The submission state.',
+        'type' => 'int',
+        'size' => 'tiny',
+        'not null' => TRUE,
+      ),
+    ),
+    'primary key' => array(
+      'id',
+    ),
+    'unique keys' => array(
+      'submission_id' => array(
+        'submission_id',
+      ),
+    ),
+  );
+  return $schema;
+}
