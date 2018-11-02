@@ -200,7 +200,6 @@ function spdatadrop_push_contacts($number = 1) {
         'debug_info' => json_decode($row['debug_info'], TRUE),
         'source_data' => $source_data,
       );
-      $submission_data = array();
       $push_result = spcivipush_push_contact($submission_data, $debug_info);
       $error = spdatadrop_push_contact_process_result($row['id'], $push_result);
       if (!$error) {
