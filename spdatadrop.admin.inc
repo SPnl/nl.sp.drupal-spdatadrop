@@ -27,10 +27,9 @@ function spdatadrop_settings_form($form, &$form_state) {
 
   $form['spdatadrop_sync_settings']['spdatadrop_sync_type'] = array(
     '#type' => 'radios',
-    '#title' => 'Wanneer wilt u contacten synchroniseren?',
+    '#title' => 'Hoe wilt u contacten synchroniseren?',
     '#default_value' => variable_get('spdatadrop_sync_type', array()),
     '#options' => array(
-      'direct' => 'Direct (geen controle bevestiging inzending!)',
       'cron' => 'Cron',
       'manual' => 'Handmatig',
     ),
