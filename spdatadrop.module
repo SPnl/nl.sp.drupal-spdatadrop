@@ -28,7 +28,7 @@ function spdatadrop_menu() {
   );
 
   $items['admin/config/sp/spdatadrop/overview'] = array(
-    'title' => 'Wachtrij',
+    'title' => 'Stats',
     'type' => MENU_DEFAULT_LOCAL_TASK,
     'access callback' => 'sprbs_access_check',
     'weight' => '0',
@@ -106,13 +106,7 @@ function spdatadrop_push_contact_process_result($id, $result) {
  * Stores sync state.
  */
 function spdatadrop_store_submission_sync_state($id, $state) {
-  $states = array(
-    'unprocessed' => '0',
-    'synced' => '1',
-    'error' => '2',
-    'insufficient data' => '3',
-    'contact id not found' => '4',
-  );
+  $states = spdatadrop_get_states();
   if (!empty($id) && isset($states[$state])) {
     $new_state = $states[$state];
     db_update('spdatadrop_syncstate')
@@ -129,7 +123,7 @@ function spdatadrop_store_submission_sync_state($id, $state) {
  */
 function spdatadrop_process_post_data() {
   $secret = variable_get('spdatadrop_secret', NULL);
-  if (empty($secret) && $_POST['secret'] === $secret) {
+  if (empty($secret) || $_POST['secret'] !== $secret) {
     watchdog('spdatadrop', 'Unauthorized spdatadrop.', array(), WATCHDOG_WARNING);
     drupal_add_http_header('Status', '401 Unauthorized');
   }
@@ -217,4 +211,18 @@ function spdatadrop_push_contacts($number = 1) {
     watchdog('spdatadrop', 'Finished pushing contacts to CiviCRM');
   }
   return $sync_ids;
+}
+
+/**
+ * Return state names.
+ */
+function spdatadrop_get_states() {
+  $states = array(
+    'unprocessed' => '0',
+    'synced' => '1',
+    'error' => '2',
+    'insufficient data' => '3',
+    'contact id not found' => '4',
+  );
+  return $states;
 }
