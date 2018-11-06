@@ -90,8 +90,52 @@ function spdatadrop_form_sync($form, &$form_state) {
  * Provide overview of syncs.
  */
 function spdatadrop_overview() {
-  $markup = '<table><tr><th>Webformulier</th><th>Bron (domein)</th><th><th>Formulier id</th></th><th>Cron wachtrij</th><th></th></tr>';
-  $markup .= '</table>';
+  $ouput = '';
+  $states = array_flip(spdatadrop_get_states());
+  // Get data.
+  $tabledata = array();
 
-  return $markup;
+  $query = "SELECT source_domain, source_title, source_id, state FROM {spdatadrop_syncstate}";
+  $result = db_query($query);
+  if ($result) {
+    while ($row = $result->fetchAssoc()) {
+      if (!isset($tabledata[$row['source_domain']][$row['source_id']]['title'])) {
+        $tabledata[$row['source_domain']][$row['source_id']]['title'] = $row['source_title'];
+      }
+      if (!isset($tabledata[$row['source_domain']][$row['source_id']]['state_data'][$row['state']]['quantity'])) {
+        $tabledata[$row['source_domain']][$row['source_id']]['state_data'][$row['state']]['quantity'] = 0;
+      }
+      $tabledata[$row['source_domain']][$row['source_id']]['state_data'][$row['state']]['quantity']++;
+    }
+  }
+
+  // Create header.
+  $tableheader = array();
+  $tableheader[] = 'Titel';
+  foreach ($states as $state_id => $state_title) {
+    $tableheader[] = $states[$state_id];
+  }
+
+  // Create tables content.
+  $output = '';
+  if (!empty($tabledata)) {
+    foreach ($tabledata as $domain => $domaindata) {
+      $output .= '<p><strong>' . $domain . '</strong></p>';
+      foreach ($domaindata as $source_id => $source_data) {
+        $tablerows[$source_id] = array(
+          'title' => $source_data['title'],
+        );
+        foreach ($states as $state_id => $state_title) {
+          if (empty($tabledata[$domain][$source_id]['state_data'][$state_id]['quantity'])) {
+            $tablerows[$source_id][$state_title] = 0;
+          }
+          else {
+            $tablerows[$source_id][$state_title] = $tabledata[$domain][$source_id]['state_data'][$state_id]['quantity'];
+          }
+        }
+      }
+      $output .= theme('table', array('header' => $tableheader, 'rows' => $tablerows));
+    }
+  }
+  return $output;
 }
