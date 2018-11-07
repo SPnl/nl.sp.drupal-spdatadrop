@@ -74,11 +74,6 @@ function spdatadrop_schema() {
     'primary key' => array(
       'id',
     ),
-    'unique keys' => array(
-      'submission_id' => array(
-        'submission_id',
-      ),
-    ),
   );
   return $schema;
 }
