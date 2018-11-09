@@ -46,6 +46,12 @@ function spdatadrop_schema() {
         'size' => 'big',
         'not null' => TRUE,
       ),
+      'source_ip' => array(
+        'description' => 'The ip address of the submission.',
+        'type' => 'varchar',
+        'length' => 46,
+        'not null' => TRUE,
+      ),
       'submission_id' => array(
         'description' => 'The id of the data submission.',
         'type' => 'int',
@@ -76,4 +82,19 @@ function spdatadrop_schema() {
     ),
   );
   return $schema;
+}
+
+/**
+ * Add ip addres column.
+ */
+function spdatadrop_update_7001() {
+  if (db_field_exists('spdatadrop_syncstate', 'source_ip') === FALSE) {
+    $spec = array(
+      'description' => 'The ip address of the submission.',
+      'type' => 'varchar',
+      'length' => 46,
+      'not null' => FALSE,
+    );
+    db_add_field('spdatadrop_syncstate', 'source_ip', $spec);
+  }
 }

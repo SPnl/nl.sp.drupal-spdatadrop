@@ -137,6 +137,7 @@ function spdatadrop_process_post_data() {
           'source_domain',
           'source_title',
           'source_id',
+          'source_ip',
           'submission_id',
         );
         foreach ($source_fields as $source_field) {

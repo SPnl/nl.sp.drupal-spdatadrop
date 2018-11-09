@@ -71,6 +71,7 @@ Example Drupal code:
         * source_domain: doemee.sp.nl
         * source_title: Aanmeldformulier v2
         * source_id: 98
+        * source_ip: 123:123:123:123
         * submission_id: 123
     * debug_info (array(...))
     * secret: mijnsleutel
