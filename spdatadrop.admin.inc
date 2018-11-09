@@ -99,7 +99,7 @@ function spdatadrop_overview() {
   if ($result) {
     while ($row = $result->fetchAssoc()) {
       if (!isset($tabledata[$row['source_domain']][$row['source_id']]['title'])) {
-        $tabledata[$row['source_domain']][$row['source_id']]['title'] = $row['source_title'];
+        $tabledata[$row['source_domain']][$row['source_id']]['title'] = $row['source_title'] . ' (' . $row['source_id'] . ')';
       }
       if (!isset($tabledata[$row['source_domain']][$row['source_id']]['state_data'][$row['state']]['quantity'])) {
         $tabledata[$row['source_domain']][$row['source_id']]['state_data'][$row['state']]['quantity'] = 0;
