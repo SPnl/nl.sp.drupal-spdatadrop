@@ -13,6 +13,8 @@ function spdatadrop_uninstall() {
   variable_del('spdatadrop_sync_type');
   variable_del('spdatadrop_cron_number');
   variable_del('spdatadrop_secret');
+  variable_del('spdatadrop_cron_is_running');
+  variable_del('spdatadrop_cron_start_time');
 }
 
 /**
