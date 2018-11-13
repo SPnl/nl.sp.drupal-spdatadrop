@@ -119,6 +119,7 @@ function spdatadrop_overview() {
   $output = '';
   if (!empty($tabledata)) {
     foreach ($tabledata as $domain => $domaindata) {
+      $tablerows = array();
       $output .= '<p><strong>' . $domain . '</strong></p>';
       foreach ($domaindata as $source_id => $source_data) {
         $tablerows[$source_id] = array(
