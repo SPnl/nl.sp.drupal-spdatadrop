@@ -30,6 +30,12 @@ function spdatadrop_schema() {
         'size' => 'big',
         'not null' => TRUE,
       ),
+      'date' => array(
+        'description' => 'The Unix timestamp when the submission was added to the queue.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
       'source_domain' => array(
         'description' => 'The data source domain.',
         'type' => 'varchar',
@@ -98,5 +104,20 @@ function spdatadrop_update_7001() {
       'not null' => FALSE,
     );
     db_add_field('spdatadrop_syncstate', 'source_ip', $spec);
+  }
+}
+
+/**
+ * Add date column.
+ */
+function spdatadrop_update_7002() {
+  if (db_field_exists('spdatadrop_syncstate', 'date') === FALSE) {
+    $spec = array(
+      'description' => 'The Unix timestamp when the submission was added to the queue.',
+      'type' => 'int',
+      'not null' => TRUE,
+      'default' => 0,
+    );
+    db_add_field('spdatadrop_syncstate', 'date', $spec);
   }
 }
