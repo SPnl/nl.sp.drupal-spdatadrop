@@ -160,6 +160,8 @@ function spdatadrop_process_post_data() {
       if (isset($_POST['debug_info'])) {
         $fields['debug_info'] = json_encode($_POST['debug_info']);
       }
+      // Add date.
+      $fields['date'] = time();
       // Add state.
       $fields['state'] = 0;
       db_insert('spdatadrop_syncstate')
