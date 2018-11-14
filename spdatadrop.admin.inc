@@ -118,24 +118,32 @@ function spdatadrop_overview() {
   // Create tables content.
   $output = '';
   if (!empty($tabledata)) {
+    $tablerows = array();
+    $row_id = 0;
     foreach ($tabledata as $domain => $domaindata) {
-      $tablerows = array();
-      $output .= '<p><strong>' . $domain . '</strong></p>';
+      // Add domain header.
+      $tablerows[$row_id] = array(
+        array(
+          'data' => '<p><strong>' . $domain . '</strong></p>',
+          'colspan' => count($states) + 1,
+          'no_striping' => TRUE,
+        ),
+      );
+      $row_id++;
       foreach ($domaindata as $source_id => $source_data) {
-        $tablerows[$source_id] = array(
-          'title' => $source_data['title'],
-        );
+        $tablerows[$row_id]['title'] = $source_data['title'];
         foreach ($states as $state_id => $state_title) {
           if (empty($tabledata[$domain][$source_id]['state_data'][$state_id]['quantity'])) {
-            $tablerows[$source_id][$state_title] = 0;
+            $tablerows[$row_id][$state_title] = 0;
           }
           else {
-            $tablerows[$source_id][$state_title] = $tabledata[$domain][$source_id]['state_data'][$state_id]['quantity'];
+            $tablerows[$row_id][$state_title] = $tabledata[$domain][$source_id]['state_data'][$state_id]['quantity'];
           }
         }
       }
-      $output .= theme('table', array('header' => $tableheader, 'rows' => $tablerows));
+      $row_id++;
     }
+    $output = theme('table', array('header' => $tableheader, 'rows' => $tablerows));
   }
   return $output;
 }
