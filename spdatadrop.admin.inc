@@ -123,25 +123,29 @@ function spdatadrop_overview() {
     foreach ($tabledata as $domain => $domaindata) {
       // Add domain header.
       $tablerows[$row_id] = array(
-        array(
-          'data' => '<p><strong>' . $domain . '</strong></p>',
-          'colspan' => count($states) + 1,
-          'no_striping' => TRUE,
+        'data' => array(
+          array(
+            'data' => '<p><strong>' . $domain . '</strong></p>',
+            'colspan' => count($states) + 1,
+          ),
         ),
+        'no_striping' => TRUE,
+        'class' => array('odd'),
       );
       $row_id++;
       foreach ($domaindata as $source_id => $source_data) {
-        $tablerows[$row_id]['title'] = $source_data['title'];
+        $tablerows[$row_id]['no_striping'] = TRUE;
+        $tablerows[$row_id]['data']['title'] = $source_data['title'];
         foreach ($states as $state_id => $state_title) {
           if (empty($tabledata[$domain][$source_id]['state_data'][$state_id]['quantity'])) {
-            $tablerows[$row_id][$state_title] = 0;
+            $tablerows[$row_id]['data'][$state_title] = 0;
           }
           else {
-            $tablerows[$row_id][$state_title] = $tabledata[$domain][$source_id]['state_data'][$state_id]['quantity'];
+            $tablerows[$row_id]['data'][$state_title] = $tabledata[$domain][$source_id]['state_data'][$state_id]['quantity'];
           }
         }
+        $row_id++;
       }
-      $row_id++;
     }
     $output = theme('table', array('header' => $tableheader, 'rows' => $tablerows));
   }
