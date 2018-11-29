@@ -96,7 +96,7 @@ function spdatadrop_schema() {
  * Add ip addres column.
  */
 function spdatadrop_update_7001() {
-  if (db_field_exists('spdatadrop_syncstate', 'source_ip') === FALSE) {
+  if (!db_field_exists('spdatadrop_syncstate', 'source_ip')) {
     $spec = array(
       'description' => 'The ip address of the submission.',
       'type' => 'varchar',
@@ -111,7 +111,7 @@ function spdatadrop_update_7001() {
  * Add date column.
  */
 function spdatadrop_update_7002() {
-  if (db_field_exists('spdatadrop_syncstate', 'date') === FALSE) {
+  if (!db_field_exists('spdatadrop_syncstate', 'date')) {
     $spec = array(
       'description' => 'The Unix timestamp when the submission was added to the queue.',
       'type' => 'int',
