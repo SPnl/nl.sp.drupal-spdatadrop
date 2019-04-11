@@ -130,55 +130,62 @@ function spdatadrop_store_submission_sync_state($id, $state) {
  * Process data from post.
  */
 function spdatadrop_process_post_data() {
-  $secret = variable_get('spdatadrop_secret', NULL);
-  if (empty($secret) || $_POST['secret'] !== $secret) {
-    watchdog('spdatadrop', 'Unauthorized spdatadrop.', array(), WATCHDOG_WARNING);
-    drupal_add_http_header('Status', '401 Unauthorized');
-  }
-  else {
-    // Store data in database.
-    if (isset($_POST['submission_data'])) {
-      $fields = array();
-      // Add submission data.
-      $fields['submission_data'] = json_encode($_POST['submission_data']);
-      // Add source data.
-      if (isset($_POST['source_data'])) {
-        $source_fields = array(
-          'source_domain',
-          'source_title',
-          'source_id',
-          'source_ip',
-          'submission_id',
-        );
-        foreach ($source_fields as $source_field) {
-          if (isset($_POST['source_data'][$source_field])) {
-            $fields[$source_field] = $_POST['source_data'][$source_field];
-          }
-        }
-      }
-      // Add debug info.
-      if (isset($_POST['debug_info'])) {
-        $fields['debug_info'] = json_encode($_POST['debug_info']);
-      }
-      // Add date.
-      $fields['date'] = time();
-      // Add state.
-      $fields['state'] = 0;
-      db_insert('spdatadrop_syncstate')
-        ->fields($fields)
-        ->execute();
-      // Log.
-      watchdog('spdatadrop', 'Queued submission id @sid from @domain (@title).', array(
-        '@sid' => $_POST['source_data']['submission_id'],
-        '@title' => $_POST['source_data']['source_title'],
-        '@domain' => $_POST['source_data']['source_domain'],
-      ));
+  $ip_address = ip_address();
+  $allowed_ips = variable_get('spdatadrop_allowed_ips', '');
+  if (strpos($allowed_ips, $ip_address) !== FALSE) {
+    $secret = variable_get('spdatadrop_secret', NULL);
+    if (empty($secret) || $_POST['secret'] !== $secret) {
+      watchdog('spdatadrop', 'Unauthorized spdatadrop.', array(), WATCHDOG_WARNING);
+      drupal_add_http_header('Status', '401 Unauthorized');
     }
     else {
-      watchdog('spdatadrop', 'Missing data spdatadrop.', array(), WATCHDOG_WARNING);
-      drupal_add_http_header('Status', '400 Bad request');
+      // Store data in database.
+      if (isset($_POST['submission_data'])) {
+        $fields = array();
+        // Add submission data.
+        $fields['submission_data'] = json_encode($_POST['submission_data']);
+        // Add source data.
+        if (isset($_POST['source_data'])) {
+          $source_fields = array(
+            'source_domain',
+            'source_title',
+            'source_id',
+            'source_ip',
+            'submission_id',
+          );
+          foreach ($source_fields as $source_field) {
+            if (isset($_POST['source_data'][$source_field])) {
+              $fields[$source_field] = $_POST['source_data'][$source_field];
+            }
+          }
+        }
+        // Add debug info.
+        if (isset($_POST['debug_info'])) {
+          $fields['debug_info'] = json_encode($_POST['debug_info']);
+        }
+        // Add date.
+        $fields['date'] = time();
+        // Add state.
+        $fields['state'] = 0;
+        db_insert('spdatadrop_syncstate')
+          ->fields($fields)
+          ->execute();
+        // Log.
+        watchdog('spdatadrop', 'Queued submission id @sid from @domain (@title).', array(
+          '@sid' => $_POST['source_data']['submission_id'],
+          '@title' => $_POST['source_data']['source_title'],
+          '@domain' => $_POST['source_data']['source_domain'],
+        ));
+      }
+      else {
+        watchdog('spdatadrop', 'Missing data spdatadrop.', array(), WATCHDOG_WARNING);
+        drupal_add_http_header('Status', '400 Bad request');
+      }
+      return;
     }
-    return;
+  }
+  else {
+    watchdog('spdatadrop', 'Unauthorized datadrop from ' . $ip_address);
   }
 }
 

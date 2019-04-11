@@ -25,6 +25,13 @@ function spdatadrop_settings_form($form, &$form_state) {
     '#default_value' => variable_get('spdatadrop_secret', ''),
   );
 
+  $form['spdatadrop_sync_settings']['spdatadrop_allowed_ips'] = array(
+    '#type' => 'textarea',
+    '#title' => 'IP adressen die data  mogen droppen',
+    '#default_value' => variable_get('spdatadrop_allowed_ips', ''),
+    '#description' => 'Één per regel',
+  );
+
   $form['spdatadrop_sync_settings']['spdatadrop_sync_type'] = array(
     '#type' => 'radios',
     '#title' => 'Hoe wilt u contacten synchroniseren?',
