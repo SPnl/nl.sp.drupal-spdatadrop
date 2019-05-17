@@ -215,6 +215,13 @@ function spdatadrop_push_contacts($number = 1) {
       $push_result = spcivipush_push_contact($submission_data, $debug_info);
       $error = spdatadrop_push_contact_process_result($row['id'], $push_result);
       if (!$error) {
+        // Store contact id.
+        db_update('spdatadrop_syncstate')
+          ->fields(array(
+            'contact_id' => $push_result,
+          ))
+          ->condition('id', $row['id'])
+          ->execute();
         $sync_ids[] = $push_result;
         if (!empty($sync_ids)) {
           watchdog('spdatadrop', 'Pushed submission id @sid from @domain (@title).', array(

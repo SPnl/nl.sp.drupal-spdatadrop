@@ -121,3 +121,17 @@ function spdatadrop_update_7002() {
     db_add_field('spdatadrop_syncstate', 'date', $spec);
   }
 }
+
+/**
+ * Add contact_id column.
+ */
+function spdatadrop_update_7003() {
+  if (!db_field_exists('spdatadrop_syncstate', 'contact_id')) {
+    $spec = array(
+      'description' => 'The civicrm contact id.',
+      'type' => 'int',
+      'not null' => FALSE,
+    );
+    db_add_field('spdatadrop_syncstate', 'contact_id', $spec);
+  }
+}
