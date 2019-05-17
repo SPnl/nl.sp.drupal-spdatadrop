@@ -84,6 +84,17 @@ function spdatadrop_schema() {
         'size' => 'tiny',
         'not null' => TRUE,
       ),
+      'contact_id' => array(
+        'description' => 'The civicrm contact id.',
+        'type' => 'int',
+        'not null' => FALSE,
+      ),
+      'secret' => array(
+        'description' => 'A secret used to create unsubscribe link.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+      ),
     ),
     'primary key' => array(
       'id',
@@ -133,5 +144,20 @@ function spdatadrop_update_7003() {
       'not null' => FALSE,
     );
     db_add_field('spdatadrop_syncstate', 'contact_id', $spec);
+  }
+}
+
+/**
+ * Add secret column.
+ */
+function spdatadrop_update_7004() {
+  if (!db_field_exists('spdatadrop_syncstate', 'secret')) {
+    $spec = array(
+      'description' => 'The secret to decode unsubscribe link.',
+      'type' => 'varchar',
+      'length' => 255,
+      'not null' => FALSE,
+    );
+    db_add_field('spdatadrop_syncstate', 'secret', $spec);
   }
 }
