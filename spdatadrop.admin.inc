@@ -20,7 +20,7 @@ function spdatadrop_settings_form($form, &$form_state) {
 
   $form['spdatadrop_sync_settings']['spdatadrop_secret'] = array(
     '#type' => 'textfield',
-    '#title' => 'Geheime sleutel',
+    '#title' => 'Geheime sleutel webformsync',
     '#description' => 'This secret should match the secret set in spwebformsync modules pushing to spdatadrop.',
     '#default_value' => variable_get('spdatadrop_secret', ''),
   );
