@@ -59,6 +59,15 @@ function spdatadrop_menu() {
     'access arguments' => array('access content'),
   );
 
+  $items['afmelden/%'] = array(
+    'title' => 'Afmelden',
+    'type' => MENU_NORMAL_ITEM,
+    'page callback'  => 'drupal_get_form',
+    'page arguments' => array('spdatadrop_unsubscribe_form', 1),
+    'file' => 'spdatadrop.unsubscribe.inc',
+    'access arguments' => array('access content'),
+  );
+
   return $items;
 }
 

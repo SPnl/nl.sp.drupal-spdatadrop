@@ -100,6 +100,39 @@ function spdatadrop_schema() {
       'id',
     ),
   );
+
+  $schema['spdatadrop_unsubscribe'] = array(
+    'description' => 'Unsubscribe submissions.',
+    'fields' => array(
+      'id' => array(
+        'description' => 'Primary key.',
+        'type' => 'serial',
+        'size' => 'big',
+        'not null' => TRUE,
+      ),
+      'date' => array(
+        'description' => 'The Unix timestamp when the submission was added to the queue.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'secret' => array(
+        'description' => 'A unique secret for each unsubscribe link.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+      ),
+      'state' => array(
+        'description' => 'The unsubscribe state.',
+        'type' => 'int',
+        'size' => 'tiny',
+        'not null' => TRUE,
+      ),
+    ),
+    'primary key' => array(
+      'id',
+    ),
+  );
   return $schema;
 }
 
@@ -159,5 +192,46 @@ function spdatadrop_update_7004() {
       'not null' => FALSE,
     );
     db_add_field('spdatadrop_syncstate', 'secret', $spec);
+  }
+}
+
+/**
+ * Add unsubscribe table.
+ */
+function spdatadrop_update_7005() {
+  if (!db_table_exists('spdatadrop_unsubscribe')) {
+    $schema = array(
+      'description' => 'Unsubscribe submissions.',
+      'fields' => array(
+        'id' => array(
+          'description' => 'Primary key.',
+          'type' => 'serial',
+          'size' => 'big',
+          'not null' => TRUE,
+        ),
+        'date' => array(
+          'description' => 'The Unix timestamp when the submission was added to the queue.',
+          'type' => 'int',
+          'not null' => TRUE,
+          'default' => 0,
+        ),
+        'secret' => array(
+          'description' => 'A unique secret for each unsubscribe link.',
+          'type' => 'varchar',
+          'length' => 255,
+          'not null' => FALSE,
+        ),
+        'state' => array(
+          'description' => 'The unsubscribe state.',
+          'type' => 'int',
+          'size' => 'tiny',
+          'not null' => TRUE,
+        ),
+      ),
+      'primary key' => array(
+        'id',
+      ),
+    );
+    db_create_table('spdatadrop_unsubscribe', $schema);
   }
 }

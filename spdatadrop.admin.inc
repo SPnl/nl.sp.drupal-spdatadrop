@@ -25,6 +25,13 @@ function spdatadrop_settings_form($form, &$form_state) {
     '#default_value' => variable_get('spdatadrop_secret', ''),
   );
 
+  $form['spdatadrop_sync_settings']['spdatadrop_secret_unsubscribe'] = array(
+    '#type' => 'textfield',
+    '#title' => 'Geheime sleutel uitschrijf link',
+    '#description' => 'This secret should match the unsubscribe secret set in spwebformsync modules pushing to spdatadrop.',
+    '#default_value' => variable_get('spdatadrop_secret_unsubscribe', ''),
+  );
+
   $form['spdatadrop_sync_settings']['spdatadrop_allowed_ips'] = array(
     '#type' => 'textarea',
     '#title' => 'IP adressen die data  mogen droppen',
