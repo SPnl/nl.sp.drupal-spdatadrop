@@ -123,19 +123,19 @@ function spdatadrop_unsubscribe_submissions() {
                 $result = spcivipush_push_contact($unsubscribe_data, $debug_info);
                 $error = FALSE;
                 if ($result === FALSE) {
-                  spdatadrop_store_unsubscribe_state($id, 'error');
+                  spdatadrop_store_unsubscribe_state($unsubscribe_syncstate_item['id'], 'error');
                   $error = TRUE;
                 }
                 elseif ($result === 'insufficient data') {
-                  spdatadrop_store_unsubscribe_state($id, 'insufficient data');
+                  spdatadrop_store_unsubscribe_state($unsubscribe_syncstate_item['id'], 'insufficient data');
                   $error = TRUE;
                 }
                 elseif ($result === 'contact id not found') {
-                  spdatadrop_store_unsubscribe_state($id, 'contact id not found');
+                  spdatadrop_store_unsubscribe_state($unsubscribe_syncstate_item['id'], 'contact id not found');
                   $error = TRUE;
                 }
                 else {
-                  spdatadrop_store_unsubscribe_state($id, 'synced');
+                  spdatadrop_store_unsubscribe_state($unsubscribe_syncstate_item['id'], 'synced');
                 }
                 if (!$error) {
                   watchdog('spdatadrop', 'Unsubscribed groups: submission id @sid from @domain (@title).', array(
@@ -153,7 +153,6 @@ function spdatadrop_unsubscribe_submissions() {
                 }
               }
               break;
-
           }
         }
       }
