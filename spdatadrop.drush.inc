@@ -16,6 +16,11 @@ function spdatadrop_drush_command() {
     'aliases'     => array('spdr'),
   );
 
+  $items['spdatadrop-sync'] = array(
+    'description' => "sync.",
+    'aliases'     => array('spds'),
+  );
+
   return $items;
 }
 
@@ -31,4 +36,11 @@ function drush_spdatadrop_retry() {
     ->execute();
   watchdog('spdatadrop', 'Reset @updated syncs that gave an error. They will be retried on next cron run.', array('@updated' => $num_updated));
   drupal_set_message('Reset ' . $num_updated . ' syncs that gave an error. They will be retried on next cron run.');
+}
+
+/**
+ * Syncs not yet synced webform submissions.
+ */
+function drush_spdatadrop_sync() {
+  spdatadrop_customcron();
 }
