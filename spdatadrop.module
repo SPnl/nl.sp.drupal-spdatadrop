@@ -34,6 +34,15 @@ function spdatadrop_menu() {
     'weight' => '0',
   );
 
+  $items['admin/config/sp/spdatadrop/unsubscriptions'] = array(
+    'title' => 'Uitschrijvingen',
+    'type' => MENU_LOCAL_TASK,
+    'page callback' => 'spdatadrop_unsubscriptions',
+    'file' => 'spdatadrop.admin.inc',
+    'access callback' => 'sprbs_access_check',
+    'weight' => '1',
+  );
+
   $items['admin/config/sp/spdatadrop/settings'] = array(
     'title' => 'Instellingen',
     'type' => MENU_LOCAL_TASK,
@@ -41,7 +50,7 @@ function spdatadrop_menu() {
     'page arguments' => array('spdatadrop_settings_form'),
     'file' => 'spdatadrop.admin.inc',
     'access callback' => 'sprbs_access_check',
-    'weight' => '1',
+    'weight' => '2',
   );
 
   $items['spdatadrop'] = array(
@@ -75,117 +84,104 @@ function spdatadrop_menu() {
  * Syncs not yet synced webform submissions.
  */
 function spdatadrop_customcron() {
-  spdatadrop_unsubscribe_submissions();
-  spdatadrop_sync_submissions();
+  $number = variable_get('spdatadrop_cron_number', 0);
+  $number_pushed = 0;
+  // First sync all form submissions.
+  $sync_ids = spdatadrop_sync_submissions($number);
+  $to_go = $number - count($sync_ids);
+  if ($to_go > 0) {
+    $number_pushed = spdatadrop_unsubscribe_submissions($to_go);
+  }
 }
 
 /**
  * Unsubscribe submissions.
  */
-function spdatadrop_unsubscribe_submissions() {
-  $max_cron_number = variable_get('spdatadrop_cron_number', 0);
+function spdatadrop_unsubscribe_submissions($number) {
+  $number_pushed = 0;
   $states = spdatadrop_get_states();
-  $unsubscriptions_query = "SELECT id, secret FROM {spdatadrop_unsubscribe} WHERE state = 0 LIMIT " . $max_cron_number;
+  $unsubscriptions_query = "SELECT us.id id, us.secret secret, us.state state, unsubscribe, is_opt_out, do_not_phone, do_not_sms, contact_id, submission_data, submission_id, source_title, source_domain FROM {spdatadrop_unsubscribe} us INNER JOIN {spdatadrop_syncstate} ss ON us.secret = ss.secret WHERE ss.secret IS NOT NULL AND us.state = 0 AND ss.state = 1 LIMIT " . $number;
   $unsubscribe_items = db_query($unsubscriptions_query);
   if ($unsubscribe_items->rowCount()) {
     watchdog('spdatadrop', 'Unsubscribing contacts.');
     foreach ($unsubscribe_items as $unsubscribe_item) {
-      if (!empty($unsubscribe_item->secret)) {
-        // Process single unsubscription.
-        $secret = $unsubscribe_item->secret;
-        // Get original sync data..
-        $unsubscribe_syncstate_query = "SELECT * FROM {spdatadrop_syncstate} WHERE secret = :secret";
-        $unsubscribe_syncstate_items = db_query($unsubscribe_syncstate_query, array(':secret' => $secret));
-        $unsubscribe_syncstate_item = $unsubscribe_syncstate_items->fetchAssoc();
-        if (!empty($unsubscribe_syncstate_item)) {
-          $state = array_search($unsubscribe_syncstate_item['state'], $states);
-          switch ($state) {
-            case 'unprocessed':
-              // Set state to unsubscribed.
-              spdatadrop_store_unsubscribe_state($unsubscribe_item->id, 'unsubscribed');
-              spdatadrop_store_submission_sync_state($unsubscribe_syncstate_item['id'], 'unsubscribed');
-              watchdog('spdatadrop', 'Unsubscribed (sync id @sync_id).', array('@sync_id' => $unsubscribe_syncstate_item['id']));
-              break;
+      // Process single unsubscription.
+      $secret = $unsubscribe_item->secret;
+      $contact_id = $unsubscribe_item->contact_id;
 
-            case 'synced':
-              // Remove contact from synced groups in CiviCRM.
-              $submission_data = json_decode($unsubscribe_syncstate_item['submission_data'], TRUE);
-              if (!empty($submission_data['groups'])) {
-                $contact_id = $unsubscribe_syncstate_item['contact_id'];
-                watchdog('spdatadrop', 'Unsubscribing already synced contact (contact id @contact_id).', array('@contact_id' => $contact_id));
-                $unsubscribe_data['contact_id'] = $contact_id;
-                $unsubscribe_data['remove_groups'] = $submission_data['groups'];
-                watchdog('spdatadrop', 'Removing subscribed groups from contact in CiviCRM');
-                $debug_info = array(
-                  'spdatadrop action' => 'unsubscribe',
-                  'spdatadrop syncstate item' => $unsubscribe_syncstate_item,
-                );
-                $result = spcivipush_push_contact($unsubscribe_data, $debug_info);
-                $error = FALSE;
-                if ($result === FALSE) {
-                  spdatadrop_store_unsubscribe_state($unsubscribe_syncstate_item['id'], 'error');
-                  $error = TRUE;
-                }
-                elseif ($result === 'insufficient data') {
-                  spdatadrop_store_unsubscribe_state($unsubscribe_syncstate_item['id'], 'insufficient data');
-                  $error = TRUE;
-                }
-                elseif ($result === 'contact id not found') {
-                  spdatadrop_store_unsubscribe_state($unsubscribe_syncstate_item['id'], 'contact id not found');
-                  $error = TRUE;
-                }
-                else {
-                  spdatadrop_store_unsubscribe_state($unsubscribe_syncstate_item['id'], 'synced');
-                }
-                if (!$error) {
-                  watchdog('spdatadrop', 'Unsubscribed groups: submission id @sid from @domain (@title).', array(
-                    '@sid' => $unsubscribe_syncstate_item['submission_id'],
-                    '@title' => $unsubscribe_syncstate_item['source_title'],
-                    '@domain' => $unsubscribe_syncstate_item['source_domain'],
-                  ));
-                }
-                else {
-                  watchdog('spdatadrop', 'Error unsubscribing groups: submission id @sid from @domain (@title).', array(
-                    '@sid' => $unsubscribe_syncstate_item['submission_id'],
-                    '@title' => $unsubscribe_syncstate_item['source_title'],
-                    '@domain' => $unsubscribe_syncstate_item['source_domain'],
-                  ));
-                }
-              }
-              break;
-          }
+      $unsubscribe_data = array();
+      $debug_info = array();
+
+      $number_pushed++;
+      $unsubscribe_data['contact_id'] = $contact_id;
+
+      // Add debug info.
+      $debug_info['unsubscribe'] = $unsubscribe_item;
+      // Remove contact from synced groups in CiviCRM.
+      if ($unsubscribe_item->unsubscribe) {
+        $submission_data = json_decode($unsubscribe_item->submission_data, TRUE);
+        if (!empty($submission_data['groups'])) {
+          $unsubscribe_data['remove_groups'] = $submission_data['groups'];
         }
+      }
+      // Process is_opt_out, do_not_phone and do_not_sms.
+      if ($unsubscribe_item->is_opt_out) {
+        $unsubscribe_data['is_opt_out'] = TRUE;
+      }
+      if ($unsubscribe_item->do_not_phone) {
+        $unsubscribe_data['do_not_phone'] = TRUE;
+      }
+      if ($unsubscribe_item->do_not_sms) {
+        $unsubscribe_data['do_not_sms'] = TRUE;
+      }
+      // Push unsubscribe data.
+      $result = spcivipush_push_contact($unsubscribe_data, $debug_info);
+      $error = FALSE;
+      if ($result === FALSE) {
+        spdatadrop_store_unsubscribe_state($unsubscribe_item->id, 'error');
+        $error = TRUE;
+      }
+      elseif ($result === 'insufficient data') {
+        spdatadrop_store_unsubscribe_state($unsubscribe_item->id, 'insufficient data');
+        $error = TRUE;
+      }
+      elseif ($result === 'contact id not found') {
+        spdatadrop_store_unsubscribe_state($unsubscribe_item->id, 'contact id not found');
+        $error = TRUE;
+      }
+      else {
+        spdatadrop_store_unsubscribe_state($unsubscribe_item->id, 'synced');
       }
     }
     watchdog('spdatadrop', 'Finished unsubscribing contact.');
   }
+  return $number_pushed;
 }
 
 /**
  * Sync submissions.
  */
-function spdatadrop_sync_submissions() {
+function spdatadrop_sync_submissions($number) {
+  $sync_ids = array();
   $states = spdatadrop_get_states();
-  $max_cron_number = variable_get('spdatadrop_cron_number', 0);
   // Sync not yet synced webform submissions.
-  $sync_type = variable_get('spdatadrop_sync_type');
-  $cron_is_running = variable_get('spdatadrop_cron_is_running', FALSE);
-  $cron_start_time = variable_get('spdatadrop_cron_start_time', 0);
-  if ($sync_type == 'cron') {
-    if ($cron_is_running === FALSE || time() - $cron_start_time > 600) {
-      set_time_limit(120);
-      // Get submissions to sync.
-      if ($max_cron_number > 0) {
-        variable_set('spdatadrop_cron_is_running', TRUE);
-        variable_set('spdatadrop_cron_start_time', time());
-        spdatadrop_push_contacts($max_cron_number);
-        variable_set('spdatadrop_cron_is_running', FALSE);
-      }
-    }
-    else {
-      watchdog('spdatadrop', 'Custom cron not started, cron already running.');
+  $sync_is_running = variable_get('spdatadrop_sync_is_running', FALSE);
+  $sync_start_time = variable_get('spdatadrop_sync_start_time', 0);
+  if ($sync_is_running === FALSE || time() - $sync_start_time > 600) {
+    set_time_limit(120);
+    // Get submissions to sync.
+    if ($number > 0) {
+      variable_set('spdatadrop_sync_is_running', TRUE);
+      variable_set('spdatadrop_sync_start_time', time());
+      $sync_ids = spdatadrop_push_contacts($number);
+      variable_set('spdatadrop_sync_is_running', FALSE);
     }
   }
+  else {
+    watchdog('spdatadrop', 'Sync not started, sync is already running.');
+    drupal_set_message('Sync not started, datadrop sync is already running.', 'warning');
+  }
+  return $sync_ids;
 }
 
 /**
@@ -318,7 +314,10 @@ function spdatadrop_push_contacts($number = 1) {
   if ($result && $result->rowCount()) {
     watchdog('spdatadrop', 'Pushing contacts to CiviCRM');
     while ($row = $result->fetchAssoc()) {
-      spdatadrop_push_contact($row);
+      $contact_id = spdatadrop_push_contact($row);
+      if (!empty($contact_id)) {
+        $sync_ids[] = $contact_id;
+      }
     }
     watchdog('spdatadrop', 'Finished pushing contacts to CiviCRM');
   }
@@ -351,14 +350,13 @@ function spdatadrop_push_contact($spdatadrop_syncstate) {
       ))
       ->condition('id', $spdatadrop_syncstate['id'])
       ->execute();
-    $sync_ids[] = $push_result;
-    if (!empty($sync_ids)) {
-      watchdog('spdatadrop', 'Pushed submission id @sid from @domain (@title).', array(
-        '@sid' => $spdatadrop_syncstate['submission_id'],
-        '@title' => $spdatadrop_syncstate['source_title'],
-        '@domain' => $spdatadrop_syncstate['source_domain'],
-      ));
-    }
+    watchdog('spdatadrop', 'Pushed submission id @sid from @domain (@title).', array(
+      '@sid' => $spdatadrop_syncstate['submission_id'],
+      '@title' => $spdatadrop_syncstate['source_title'],
+      '@domain' => $spdatadrop_syncstate['source_domain'],
+    ));
+    watchdog('spdatadrop', 'Finished processing sync id. @id', array('@id' => $spdatadrop_syncstate['submission_id']));
+    return $push_result;
   }
   else {
     watchdog('spdatadrop', 'Error pushing submission id @sid from @domain (@title).', array(
@@ -367,7 +365,6 @@ function spdatadrop_push_contact($spdatadrop_syncstate) {
       '@domain' => $spdatadrop_syncstate['source_domain'],
     ));
   }
-  watchdog('spdatadrop', 'Finished processing sync id. @id', array('@id' => $spdatadrop_syncstate['submission_id']));
 }
 
 /**
@@ -380,7 +377,6 @@ function spdatadrop_get_states() {
     'error' => '2',
     'insufficient data' => '3',
     'contact id not found' => '4',
-    'unsubscribed' => '5',
   );
   return $states;
 }

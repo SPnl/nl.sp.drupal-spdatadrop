@@ -13,8 +13,8 @@ function spdatadrop_uninstall() {
   variable_del('spdatadrop_sync_type');
   variable_del('spdatadrop_cron_number');
   variable_del('spdatadrop_secret');
-  variable_del('spdatadrop_cron_is_running');
-  variable_del('spdatadrop_cron_start_time');
+  variable_del('spdatadrop_sync_is_running');
+  variable_del('spdatadrop_sync_start_time');
 }
 
 /**
@@ -122,11 +122,35 @@ function spdatadrop_schema() {
         'length' => 255,
         'not null' => FALSE,
       ),
+      'unsubscribe' => array(
+        'description' => 'Unsubscribe from group(s).',
+        'type' => 'int',
+        'size' => 'tiny',
+        'not null' => TRUE,
+      ),
+      'is_opt_out' => array(
+        'description' => 'No mails.',
+        'type' => 'int',
+        'size' => 'tiny',
+        'not null' => FALSE,
+      ),
+      'do_not_phone' => array(
+        'description' => 'No phone calls.',
+        'type' => 'int',
+        'size' => 'tiny',
+        'not null' => FALSE,
+      ),
+      'do_not_sms' => array(
+        'description' => 'No sms.',
+        'type' => 'int',
+        'size' => 'tiny',
+        'not null' => FALSE,
+      ),
       'state' => array(
         'description' => 'The unsubscribe state.',
         'type' => 'int',
         'size' => 'tiny',
-        'not null' => TRUE,
+        'not null' => FALSE,
       ),
     ),
     'primary key' => array(
@@ -233,5 +257,47 @@ function spdatadrop_update_7005() {
       ),
     );
     db_create_table('spdatadrop_unsubscribe', $schema);
+  }
+}
+
+/**
+ * Add unsubscribe, do_not_phone, do_not_sms, and is_opt_out columns.
+ */
+function spdatadrop_update_7006() {
+  if (!db_field_exists('spdatadrop_unsubscribe', 'unsubscribe')) {
+    $spec = array(
+      'description' => 'Unsubscribe from group(s).',
+      'type' => 'int',
+      'size' => 'tiny',
+      'not null' => FALSE,
+    );
+    db_add_field('spdatadrop_unsubscribe', 'unsubscribe', $spec);
+  }
+  if (!db_field_exists('spdatadrop_unsubscribe', 'is_opt_out')) {
+    $spec = array(
+      'description' => 'No emails.',
+      'type' => 'int',
+      'size' => 'tiny',
+      'not null' => FALSE,
+    );
+    db_add_field('spdatadrop_unsubscribe', 'is_opt_out', $spec);
+  }
+  if (!db_field_exists('spdatadrop_unsubscribe', 'do_not_phone')) {
+    $spec = array(
+      'description' => 'No phonecalls.',
+      'type' => 'int',
+      'size' => 'tiny',
+      'not null' => FALSE,
+    );
+    db_add_field('spdatadrop_unsubscribe', 'do_not_phone', $spec);
+  }
+  if (!db_field_exists('spdatadrop_unsubscribe', 'do_not_sms')) {
+    $spec = array(
+      'description' => 'No sms.',
+      'type' => 'int',
+      'size' => 'tiny',
+      'not null' => FALSE,
+    );
+    db_add_field('spdatadrop_unsubscribe', 'do_not_sms', $spec);
   }
 }

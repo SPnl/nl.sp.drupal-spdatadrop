@@ -88,13 +88,21 @@ function spdatadrop_settings_form($form, &$form_state) {
  */
 function spdatadrop_form_sync($form, &$form_state) {
   $number = variable_get('spdatadrop_cron_number', 0);
-  $processed = spdatadrop_push_contacts($number);
-  if (!empty($processed)) {
-    $text = '<div id="sync_now"><p>Contacten die gesynced zijn (CiviCRM contact ids): ' . implode(', ', $processed) . '</p>';
+  $number_pushed = 0;
+  // First sync all form submissions.
+  $sync_ids = spdatadrop_sync_submissions($number);
+  $to_go = $number - count($sync_ids);
+  if ($to_go > 0) {
+    $number_pushed = spdatadrop_unsubscribe_submissions($to_go);
+  }
+
+  if (!empty($sync_ids)) {
+    $text = '<div id="sync_now"><p>Formulier inzendingen die gesynced zijn (CiviCRM contact ids): ' . implode(', ', $sync_ids) . '</p>';
   }
   else {
-    $text = '<div id="sync_now"><p>Geen inzendingen gevonden.</p>';
+    $text = '<div id="sync_now"><p>Geen te syncen formulier inzendingen gevonden.</p>';
   }
+  $text .= '<p>Aantal verwerkte uitschrijvingen: ' . $number_pushed . '</p>';
   $form['spdatadrop_sync_settings']['spdatadrop_sync_now']['#prefix'] = $text;
   return $form['spdatadrop_sync_settings']['spdatadrop_sync_now'];
 }
@@ -150,6 +158,110 @@ function spdatadrop_overview() {
       foreach ($domaindata as $source_id => $source_data) {
         $tablerows[$row_id]['no_striping'] = TRUE;
         $tablerows[$row_id]['data']['title'] = $source_data['title'];
+        foreach ($states as $state_id => $state_title) {
+          if (empty($tabledata[$domain][$source_id]['state_data'][$state_id]['quantity'])) {
+            $tablerows[$row_id]['data'][$state_title] = 0;
+          }
+          else {
+            $tablerows[$row_id]['data'][$state_title] = $tabledata[$domain][$source_id]['state_data'][$state_id]['quantity'];
+          }
+        }
+        $row_id++;
+      }
+    }
+    $output = theme('table', array('header' => $tableheader, 'rows' => $tablerows));
+  }
+  return $output;
+}
+
+/**
+ * Provide overview of unsubscriptions.
+ */
+function spdatadrop_unsubscriptions() {
+  $ouput = '';
+  $states = array_flip(spdatadrop_get_states());
+  // Get data.
+  $tabledata = array();
+
+  $query = "SELECT uns.state, unsubscribe, is_opt_out, do_not_phone, do_not_sms, source_domain, source_title, source_id FROM {spdatadrop_unsubscribe} uns LEFT JOIN {spdatadrop_syncstate} syn ON uns.secret = syn.secret";
+  $result = db_query($query);
+  if ($result) {
+    while ($row = $result->fetchAssoc()) {
+      // Set title.
+      $title = empty($row['source_title']) ? 'Wacht op webform sync' : $row['source_title'] . ' (' . $row['source_id'] . ')';
+      if (!isset($tabledata[$row['source_domain']][$row['source_id']]['title'])) {
+        $tabledata[$row['source_domain']][$row['source_id']]['title'] = $title;
+      }
+      // Count total.
+      if (!isset($tabledata[$row['source_domain']][$row['source_id']]['total']['quantity'])) {
+        $tabledata[$row['source_domain']][$row['source_id']]['total']['quantity'] = 0;
+      }
+      $tabledata[$row['source_domain']][$row['source_id']]['total']['quantity']++;
+      // Set options.
+      $options = array('unsubscribe', 'is_opt_out', 'do_not_phone', 'do_not_sms');
+      foreach ($options as $option) {
+        if (!isset($tabledata[$row['source_domain']][$row['source_id']][$option]['quantity'])) {
+          $tabledata[$row['source_domain']][$row['source_id']][$option]['quantity'] = 0;
+        }
+        if ($row[$option]) {
+          $tabledata[$row['source_domain']][$row['source_id']][$option]['quantity']++;
+        }
+      }
+      // Set states.
+      if (!isset($tabledata[$row['source_domain']][$row['source_id']]['state_data'][$row['state']]['quantity'])) {
+        $tabledata[$row['source_domain']][$row['source_id']]['state_data'][$row['state']]['quantity'] = 0;
+      }
+      $tabledata[$row['source_domain']][$row['source_id']]['state_data'][$row['state']]['quantity']++;
+    }
+  }
+
+  // Create header.
+  $tableheader = array();
+  $tableheader[] = 'Titel';
+  $tableheader[] = 'Totaal aantal';
+  $tableheader[] = 'Uitschrijven groepen';
+  $tableheader[] = 'Geen mail';
+  $tableheader[] = 'Niet bellen';
+  $tableheader[] = 'Niet sms\'en';
+  foreach ($states as $state_id => $state_title) {
+    $tableheader[] = $states[$state_id];
+  }
+
+  // Create tables content.
+  $output = '';
+  if (!empty($tabledata)) {
+    $tablerows = array();
+    $row_id = 0;
+    foreach ($tabledata as $domain => $domaindata) {
+      // Add domain header.
+      $tablerows[$row_id] = array(
+        'data' => array(
+          array(
+            'data' => '<p><strong>' . $domain . '</strong></p>',
+            'colspan' => count($states) + 6,
+          ),
+        ),
+        'no_striping' => TRUE,
+        'class' => array('odd'),
+      );
+      $row_id++;
+      foreach ($domaindata as $source_id => $source_data) {
+        $tablerows[$row_id]['no_striping'] = TRUE;
+        $tablerows[$row_id]['data']['title'] = $source_data['title'];
+        if (empty($tabledata[$domain][$source_id]['total']['quantity'])) {
+          $tablerows[$row_id]['data']['total'] = 0;
+        }
+        else {
+          $tablerows[$row_id]['data']['total'] = $tabledata[$domain][$source_id]['total']['quantity'];
+        }
+        foreach ($options as $option) {
+          if (empty($tabledata[$domain][$source_id][$option]['quantity'])) {
+            $tablerows[$row_id]['data'][$option] = 0;
+          }
+          else {
+            $tablerows[$row_id]['data'][$option] = $tabledata[$domain][$source_id][$option]['quantity'];
+          }
+        }
         foreach ($states as $state_id => $state_title) {
           if (empty($tabledata[$domain][$source_id]['state_data'][$state_id]['quantity'])) {
             $tablerows[$row_id]['data'][$state_title] = 0;
