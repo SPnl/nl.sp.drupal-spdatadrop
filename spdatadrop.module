@@ -105,14 +105,27 @@ function spdatadrop_mail($key, &$message, $params) {
       if (!empty($params['unsubscription_data']->unsubscribe)) {
         $message['body'][] = '<p>We hebben u uitgeschreven voor: ' . $params['unsubscription_data']->source_title . '.</p>';
       }
+      $lines = array();
       if (!empty($params['unsubscription_data']->is_opt_out)) {
-        $message['body'][] = '<p>We zorgen er voor dat u geen e-mails meer van ons ontvangt.</p>';
+        $lines[] = 'u geen e-mails meer van ons ontvangt';
       }
       if (!empty($params['unsubscription_data']->do_not_phone)) {
-        $message['body'][] = '<p>We gaan u niet meer bellen.</p>';
+        $lines[] = 'we u niet meer bellen';
       }
       if (!empty($params['unsubscription_data']->do_not_sms)) {
-        $message['body'][] = '<p>We sturen u geen sms\'jes meer.</p>';
+        $lines[] = 'u geen sms\'jes meer van ons ontvangt';
+      }
+      if (count($lines) > 1) {
+        $last_line = array_pop($lines);
+        $last_line = ' en ' . $last_line;
+        $line = implode(', ', $lines) . $last_line;
+      }
+      else {
+        $line = array_pop($lines);
+      }
+      if (!empty($line)) {
+        $line = '<p>Daarnaast zorgen we ervoor dat ' . $line . '.</p>';
+        $message['body'][] = $line;
       }
       $message['body'][] = '<p>Met vriendelijke groet,<br/>SP</p>';
       break;
