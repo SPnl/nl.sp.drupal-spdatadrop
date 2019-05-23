@@ -95,6 +95,31 @@ function spdatadrop_customcron() {
 }
 
 /**
+ * Mail.
+ */
+function spdatadrop_mail($key, &$message, $params) {
+  switch ($key) {
+    case 'unsubscribed':
+      $message['subject'] = 'We hebben u uitgeschreven';
+      $message['body'][] = '<p>Beste ' . $params['contact_data']['display_name'] . ',</p><p>Bedankt het doorgeven van uw communicatiewensen.</p>';
+      if (!empty($params['unsubscription_data']->unsubscribe)) {
+        $message['body'][] = '<p>We hebben u uitgeschreven voor: ' . $params['unsubscription_data']->source_title . '.</p>';
+      }
+      if (!empty($params['unsubscription_data']->is_opt_out)) {
+        $message['body'][] = '<p>We zorgen er voor dat u geen e-mails meer van ons ontvangt.</p>';
+      }
+      if (!empty($params['unsubscription_data']->do_not_phone)) {
+        $message['body'][] = '<p>We gaan u niet meer bellen.</p>';
+      }
+      if (!empty($params['unsubscription_data']->do_not_sms)) {
+        $message['body'][] = '<p>We sturen u geen sms\'jes meer.</p>';
+      }
+      $message['body'][] = '<p>Met vriendelijke groet,<br/>SP</p>';
+      break;
+  }
+}
+
+/**
  * Unsubscribe submissions.
  */
 function spdatadrop_unsubscribe_submissions($number) {
@@ -151,6 +176,21 @@ function spdatadrop_unsubscribe_submissions($number) {
       }
       else {
         spdatadrop_store_unsubscribe_state($unsubscribe_item->id, 'synced');
+        // Send mail.
+        $spcivi = \SPCivi::getInstance();
+        $params = array(
+          'id' => $contact_id,
+        );
+        $contact_data = $spcivi->api('Contact', 'getsingle', $params);
+        if (empty($contact_data['is_error'])) {
+          if (!empty($contact_data['email'])) {
+            $params = array(
+              'contact_data' => $contact_data,
+              'unsubscription_data' => $unsubscribe_item,
+            );
+            $message = drupal_mail('spdatadrop', 'unsubscribed', $contact_data['email'], language_default(), $params, 'webmaster@sp.nl');
+          }
+        }
       }
     }
     watchdog('spdatadrop', 'Finished unsubscribing contact.');
