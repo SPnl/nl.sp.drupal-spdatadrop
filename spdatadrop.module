@@ -117,7 +117,7 @@ function spdatadrop_mail($key, &$message, $params) {
         $lines[] = 'we u niet meer bellen';
       }
       if (!empty($params['unsubscription_data']->do_not_sms)) {
-        $lines[] = 'u geen sms\'jes meer van ons ontvangt';
+        $lines[] = 'we geen sms\'jes meer sturen';
       }
       if (count($lines) > 1) {
         $last_line = array_pop($lines);
