@@ -104,6 +104,10 @@ function spdatadrop_mail($key, &$message, $params) {
       $message['body'][] = '<p>Beste ' . $params['contact_data']['display_name'] . ',</p><p>Bedankt het doorgeven van uw communicatiewensen.</p>';
       if (!empty($params['unsubscription_data']->unsubscribe)) {
         $message['body'][] = '<p>We hebben u uitgeschreven voor: ' . $params['unsubscription_data']->source_title . '.</p>';
+        $prefix = 'Daarnaast zorgen we ervoor dat ';
+      }
+      else {
+        $prefix = 'We zorgen ervoor dat ';
       }
       $lines = array();
       if (!empty($params['unsubscription_data']->is_opt_out)) {
@@ -124,7 +128,7 @@ function spdatadrop_mail($key, &$message, $params) {
         $line = array_pop($lines);
       }
       if (!empty($line)) {
-        $line = '<p>Daarnaast zorgen we ervoor dat ' . $line . '.</p>';
+        $line = '<p>' . $prefix . $line . '.</p>';
         $message['body'][] = $line;
       }
       $message['body'][] = '<p>Met vriendelijke groet,<br/>SP</p>';
