@@ -67,11 +67,16 @@ Example Drupal code:
         * author: Bregje Bral
         * source: doemee.sp.nl, Aanmeldformulier v2, sid: 123
         * groups: array(132, 7834)
+        * remove_groups: array(23535, 456)
+        * sp_active: array(active, activities: array())
     * source_data
         * source_domain: doemee.sp.nl
         * source_title: Aanmeldformulier v2
         * source_id: 98
         * source_ip: 123:123:123:123
         * submission_id: 123
+        * do_not_phone: (true, false)
+        * is_opt_out: (true, false)
+        * do_not_sms: (true, false)
     * debug_info (array(...))
     * secret: mijnsleutel
