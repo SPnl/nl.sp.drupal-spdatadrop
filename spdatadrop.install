@@ -22,7 +22,7 @@ function spdatadrop_uninstall() {
  */
 function spdatadrop_schema() {
   $schema['spdatadrop_syncstate'] = array(
-    'description' => 'Status of datadrop submission processing (0=not processed, 1=synced, 2=error).',
+    'description' => 'Status of datadrop submission processing.',
     'fields' => array(
       'id' => array(
         'description' => 'Primary key.',
@@ -79,9 +79,21 @@ function spdatadrop_schema() {
         'not null' => TRUE,
       ),
       'state' => array(
-        'description' => 'The submission state.',
+        'description' => 'The submission state (0=not processed, 1=synced, 2=error, 3=insufficient data, 4=contact id not found).',
         'type' => 'int',
         'size' => 'tiny',
+        'not null' => TRUE,
+      ),
+      'callback_path' => array(
+        'description' => 'The callback path to return the contact id to.',
+        'type' => 'varchar',
+        'length' => 255,
+      ),
+      'callback_state' => array(
+        'description' => 'The callback state (0=not processed, 1=processed, 2=error).',
+        'type' => 'int',
+        'size' => 'tiny',
+        'default' => 0,
         'not null' => TRUE,
       ),
       'contact_id' => array(
@@ -165,12 +177,8 @@ function spdatadrop_schema() {
  */
 function spdatadrop_update_7001() {
   if (!db_field_exists('spdatadrop_syncstate', 'source_ip')) {
-    $spec = array(
-      'description' => 'The ip address of the submission.',
-      'type' => 'varchar',
-      'length' => 46,
-      'not null' => FALSE,
-    );
+    $schema = spdatadrop_schema();
+    $spec = $schema['spdatadrop_syncstate']['fields']['source_ip'];
     db_add_field('spdatadrop_syncstate', 'source_ip', $spec);
   }
 }
@@ -180,12 +188,8 @@ function spdatadrop_update_7001() {
  */
 function spdatadrop_update_7002() {
   if (!db_field_exists('spdatadrop_syncstate', 'date')) {
-    $spec = array(
-      'description' => 'The Unix timestamp when the submission was added to the queue.',
-      'type' => 'int',
-      'not null' => TRUE,
-      'default' => 0,
-    );
+    $schema = spdatadrop_schema();
+    $spec = $schema['spdatadrop_syncstate']['fields']['date'];
     db_add_field('spdatadrop_syncstate', 'date', $spec);
   }
 }
@@ -195,11 +199,8 @@ function spdatadrop_update_7002() {
  */
 function spdatadrop_update_7003() {
   if (!db_field_exists('spdatadrop_syncstate', 'contact_id')) {
-    $spec = array(
-      'description' => 'The civicrm contact id.',
-      'type' => 'int',
-      'not null' => FALSE,
-    );
+    $schema = spdatadrop_schema();
+    $spec = $schema['spdatadrop_syncstate']['fields']['contact_id'];
     db_add_field('spdatadrop_syncstate', 'contact_id', $spec);
   }
 }
@@ -209,12 +210,8 @@ function spdatadrop_update_7003() {
  */
 function spdatadrop_update_7004() {
   if (!db_field_exists('spdatadrop_syncstate', 'secret')) {
-    $spec = array(
-      'description' => 'The secret to decode unsubscribe link.',
-      'type' => 'varchar',
-      'length' => 255,
-      'not null' => FALSE,
-    );
+    $schema = spdatadrop_schema();
+    $spec = $schema['spdatadrop_syncstate']['fields']['secret'];
     db_add_field('spdatadrop_syncstate', 'secret', $spec);
   }
 }
@@ -224,39 +221,9 @@ function spdatadrop_update_7004() {
  */
 function spdatadrop_update_7005() {
   if (!db_table_exists('spdatadrop_unsubscribe')) {
-    $schema = array(
-      'description' => 'Unsubscribe submissions.',
-      'fields' => array(
-        'id' => array(
-          'description' => 'Primary key.',
-          'type' => 'serial',
-          'size' => 'big',
-          'not null' => TRUE,
-        ),
-        'date' => array(
-          'description' => 'The Unix timestamp when the submission was added to the queue.',
-          'type' => 'int',
-          'not null' => TRUE,
-          'default' => 0,
-        ),
-        'secret' => array(
-          'description' => 'A unique secret for each unsubscribe link.',
-          'type' => 'varchar',
-          'length' => 255,
-          'not null' => FALSE,
-        ),
-        'state' => array(
-          'description' => 'The unsubscribe state.',
-          'type' => 'int',
-          'size' => 'tiny',
-          'not null' => TRUE,
-        ),
-      ),
-      'primary key' => array(
-        'id',
-      ),
-    );
-    db_create_table('spdatadrop_unsubscribe', $schema);
+    $schema = spdatadrop_schema();
+    $table_schema['spdatadrop_unsubscribe'];
+    db_create_table('spdatadrop_unsubscribe', $table_schema);
   }
 }
 
@@ -264,40 +231,36 @@ function spdatadrop_update_7005() {
  * Add unsubscribe, do_not_phone, do_not_sms, and is_opt_out columns.
  */
 function spdatadrop_update_7006() {
+  $schema = spdatadrop_schema();
   if (!db_field_exists('spdatadrop_unsubscribe', 'unsubscribe')) {
-    $spec = array(
-      'description' => 'Unsubscribe from group(s).',
-      'type' => 'int',
-      'size' => 'tiny',
-      'not null' => FALSE,
-    );
+    $spec = $schema['spdatadrop_unsubscribe']['fields']['unsubscribe'];
     db_add_field('spdatadrop_unsubscribe', 'unsubscribe', $spec);
   }
   if (!db_field_exists('spdatadrop_unsubscribe', 'is_opt_out')) {
-    $spec = array(
-      'description' => 'No emails.',
-      'type' => 'int',
-      'size' => 'tiny',
-      'not null' => FALSE,
-    );
+    $spec = $schema['spdatadrop_unsubscribe']['fields']['is_opt_out'];
     db_add_field('spdatadrop_unsubscribe', 'is_opt_out', $spec);
   }
   if (!db_field_exists('spdatadrop_unsubscribe', 'do_not_phone')) {
-    $spec = array(
-      'description' => 'No phonecalls.',
-      'type' => 'int',
-      'size' => 'tiny',
-      'not null' => FALSE,
-    );
+    $spec = $schema['spdatadrop_unsubscribe']['fields']['do_not_phone'];
     db_add_field('spdatadrop_unsubscribe', 'do_not_phone', $spec);
   }
   if (!db_field_exists('spdatadrop_unsubscribe', 'do_not_sms')) {
-    $spec = array(
-      'description' => 'No sms.',
-      'type' => 'int',
-      'size' => 'tiny',
-      'not null' => FALSE,
-    );
+    $spec = $schema['spdatadrop_unsubscribe']['fields']['do_not_sms'];
     db_add_field('spdatadrop_unsubscribe', 'do_not_sms', $spec);
+  }
+}
+
+/**
+ * Adds callback_path and callback_state fields.
+ */
+function spdatadrop_update_7007() {
+  $schema = spdatadrop_schema();
+  if (!db_field_exists('spdatadrop_syncstate', 'callback_path')) {
+    $spec = $schema['spdatadrop_syncstate']['fields']['callback_path'];
+    db_add_field('spdatadrop_syncstate', 'callback_path', $spec);
+  }
+  if (!db_field_exists('spdatadrop_syncstate', 'callback_state')) {
+    $spec = $schema['spdatadrop_syncstate']['fields']['callback_state'];
+    db_add_field('spdatadrop_syncstate', 'callback_state', $spec);
   }
 }

@@ -92,6 +92,8 @@ function spdatadrop_customcron() {
   if ($to_go > 0) {
     $number_pushed = spdatadrop_unsubscribe_submissions($to_go);
   }
+  // Process callbacks.
+  spdatadrop_process_callbacks($number);
 }
 
 /**
@@ -334,10 +336,15 @@ function spdatadrop_process_post_data() {
         if (isset($_POST['debug_info'])) {
           $fields['debug_info'] = json_encode($_POST['debug_info']);
         }
+        // Add callback_path.
+        if (!empty($_POST['callback_path'])) {
+          $fields['callback_path'] = $_POST['callback_path'];
+        }
         // Add date.
         $fields['date'] = time();
         // Add state.
         $fields['state'] = 0;
+        $fields['callback_state'] = 0;
         db_insert('spdatadrop_syncstate')
           ->fields($fields)
           ->execute();
@@ -356,7 +363,7 @@ function spdatadrop_process_post_data() {
     }
   }
   else {
-    watchdog('spdatadrop', 'Unauthorized datadrop from ' . $ip_address);
+    watchdog('spdatadrop', 'Unauthorized datadrop from @ip_address.', array('@ip_address' => $ip_address));
   }
 }
 
@@ -436,4 +443,85 @@ function spdatadrop_get_states() {
     'contact id not found' => '4',
   );
   return $states;
+}
+
+/**
+ * Return callback state names.
+ */
+function spdatadrop_get_callback_states() {
+  $states = array(
+    'unprocessed' => '0',
+    'processed' => '1',
+    'error' => '2',
+    'no callback' => '3',
+  );
+  return $states;
+}
+
+/**
+ * Return contact id.
+ */
+function spdatadrop_process_callbacks($max) {
+  // Get callbacks.
+  $submissions = db_select('spdatadrop_syncstate', 's')
+    ->fields('s')
+    ->condition('state', 1)
+    ->condition('callback_path', '', '<>')
+    ->condition('callback_state', 0)
+    ->range(0, $max)
+    ->execute()
+    ->fetchAll();
+
+  foreach ($submissions as $submission) {
+
+    $url = 'https://' . $submission->source_domain . '/' . $submission->callback_path;
+    $secret = variable_get('spdatadrop_secret');
+    $source_data = array(
+      'source_title' => $submission->source_title,
+      'source_id' => $submission->source_id,
+      'submission_id' => $submission->submission_id,
+    );
+
+    $data_to_send = array(
+      'source_data' => $source_data,
+      'submission_data' => json_decode($submission->submission_data, TRUE),
+      'secret' => $secret,
+      'contact_id' => $submission->contact_id,
+    );
+    $request_body = http_build_query($data_to_send);
+    $headers = array('Content-Type' => 'application/x-www-form-urlencoded');
+    $options = array(
+      'method' => 'POST',
+      'data' => $request_body,
+      'headers' => $headers,
+    );
+    $result = drupal_http_request($url, $options);
+    switch ($result->code) {
+      case '200':
+        db_update('spdatadrop_syncstate')
+          ->fields(array(
+            'callback_state' => 1,
+          ))
+          ->condition('id', $submission->id)
+          ->execute();
+        watchdog('spwebformsync', 'Processed callback for submission @sid.', array('@sid' => $submission->id));
+        break;
+
+      default:
+        db_update('spdatadrop_syncstate')
+          ->fields(array(
+            'callback_state' => 3,
+          ))
+          ->condition('id', $submission->id)
+          ->execute();
+        $message_data = array(
+          'url' => $url,
+          'headers' => $headers,
+          'post data' => $options,
+          'result' => $result,
+        );
+        watchdog('spwebformsync', 'Error pushing data to spdatadrop location: <pre>@message_data</pre>', array('@message_data' => print_r($message_data, TRUE)), WATCHDOG_ERROR);
+        return FALSE;
+    }
+  }
 }

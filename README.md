@@ -12,7 +12,7 @@ Example Drupal code:
   // Send data to datadrop server.
   $url = 'https://datadrop.sp.nl/spdatadrop';
   $secret = 'mijngeheimesleutel';
-  
+
   $submission_data = array('name' => 'Jannus Joviaal', 'email' => 'joviaal@spnet.nl', groups => array(132, 7834));
   $source_data = array(
     'source_domain' => 'doemee.sp.nl',
@@ -61,7 +61,7 @@ Example Drupal code:
         * country: NL
         * notes
             * note_content: Heeft een hond
-            * note_use: array(intern, algemeen) 
+            * note_use: array(intern, algemeen)
               opties: intern, telefoongesprek, algemeen
         * overwrite: false (true|false)
         * author: Bregje Bral
@@ -80,3 +80,4 @@ Example Drupal code:
         * submission_id: 123
     * debug_info (array(...))
     * secret: mijnsleutel
+    * callback_path: mijncallbackpad

@@ -116,7 +116,7 @@ function spdatadrop_overview() {
   // Get data.
   $tabledata = array();
 
-  $query = "SELECT source_domain, source_title, source_id, state FROM {spdatadrop_syncstate}";
+  $query = "SELECT source_domain, source_title, source_id, state, callback_path, callback_state FROM {spdatadrop_syncstate}";
   $result = db_query($query);
   if ($result) {
     while ($row = $result->fetchAssoc()) {
@@ -127,6 +127,20 @@ function spdatadrop_overview() {
         $tabledata[$row['source_domain']][$row['source_id']]['state_data'][$row['state']]['quantity'] = 0;
       }
       $tabledata[$row['source_domain']][$row['source_id']]['state_data'][$row['state']]['quantity']++;
+      // Callback processed.
+      if (!isset($tabledata[$row['source_domain']][$row['source_id']]['callback_processed']['quantity'])) {
+        $tabledata[$row['source_domain']][$row['source_id']]['callback_processed']['quantity'] = 0;
+      }
+      if (!empty($row['callback_path']) && $row['callback_state'] === '1') {
+        $tabledata[$row['source_domain']][$row['source_id']]['callback_processed']['quantity']++;
+      }
+      // Callback error.
+      if (!isset($tabledata[$row['source_domain']][$row['source_id']]['callback_error']['quantity'])) {
+        $tabledata[$row['source_domain']][$row['source_id']]['callback_error']['quantity'] = 0;
+      }
+      if (!empty($row['callback_path']) && $row['callback_state'] === '3') {
+        $tabledata[$row['source_domain']][$row['source_id']]['callback_error']['quantity']++;
+      }
     }
   }
 
@@ -136,6 +150,8 @@ function spdatadrop_overview() {
   foreach ($states as $state_id => $state_title) {
     $tableheader[] = $states[$state_id];
   }
+  $tableheader[] = 'Callback processed';
+  $tableheader[] = 'Callback error';
 
   // Create tables content.
   $output = '';
@@ -148,7 +164,7 @@ function spdatadrop_overview() {
         'data' => array(
           array(
             'data' => '<p><strong>' . $domain . '</strong></p>',
-            'colspan' => count($states) + 1,
+            'colspan' => count($states) + 3,
           ),
         ),
         'no_striping' => TRUE,
@@ -166,6 +182,8 @@ function spdatadrop_overview() {
             $tablerows[$row_id]['data'][$state_title] = $tabledata[$domain][$source_id]['state_data'][$state_id]['quantity'];
           }
         }
+        $tablerows[$row_id]['data']['callback_processed'] = $tabledata[$domain][$source_id]['callback_processed']['quantity'];
+        $tablerows[$row_id]['data']['callback_error'] = $tabledata[$domain][$source_id]['callback_error']['quantity'];
         $row_id++;
       }
     }
