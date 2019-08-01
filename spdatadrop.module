@@ -100,6 +100,7 @@ function spdatadrop_customcron() {
  * Mail.
  */
 function spdatadrop_mail($key, &$message, $params) {
+  global $base_url;
   switch ($key) {
     case 'unsubscribed':
       $message['subject'] = 'We hebben u uitgeschreven';
@@ -137,7 +138,7 @@ function spdatadrop_mail($key, &$message, $params) {
       break;
 
     case 'error':
-      $message['subject'] = 'Datadrop fout';
+      $message['subject'] = 'Datadrop fout op ' . $base_url;
       $message['body'][] = format_string($params['content'], $params['data']);
       break;
 
@@ -430,11 +431,12 @@ function spdatadrop_push_contact($spdatadrop_syncstate) {
   }
   else {
     $error_message = array(
-      'content' => 'Error pushing submission id @sid from @domain (@title) from datadrop to CiviCRM.',
+      'content' => 'Error (@push_result) pushing submission id @sid from @domain (@title) from datadrop to CiviCRM.',
       'data' => array(
         '@sid' => $spdatadrop_syncstate['submission_id'],
         '@title' => $spdatadrop_syncstate['source_title'],
         '@domain' => $spdatadrop_syncstate['source_domain'],
+        '@push_result' => $push_result,
       ),
     );
     watchdog('spdatadrop', $error_message['content'], $error_message['data']);
@@ -525,13 +527,26 @@ function spdatadrop_process_callbacks($max) {
           ))
           ->condition('id', $submission->id)
           ->execute();
-        $message_data = array(
+
+        $message_data = '<pre>' . print_r(array(
           'url' => $url,
           'headers' => $headers,
           'post data' => $options,
           'result' => $result,
+        ), TRUE) . '</pre>';
+
+        $error_message = array(
+          'content' => 'Error pushing data to callback location: <pre>@message_data</pre>',
+          'data' => array(
+            '@message_data' => $message_data,
+          ),
         );
-        watchdog('spwebformsync', 'Error pushing data to spdatadrop location: <pre>@message_data</pre>', array('@message_data' => print_r($message_data, TRUE)), WATCHDOG_ERROR);
+        watchdog('spdatadrop', $error_message['content'], $error_message['data']);
+        $message = drupal_mail('spdatadrop', 'error', 'webmaster@sp.nl', language_default(), $error_message, 'webmaster@sp.nl');
+
+
+
+
         return FALSE;
     }
   }
