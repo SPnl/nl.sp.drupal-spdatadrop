@@ -135,6 +135,12 @@ function spdatadrop_mail($key, &$message, $params) {
       }
       $message['body'][] = '<p>Met vriendelijke groet,<br/>SP</p>';
       break;
+
+    case 'error':
+      $message['subject'] = 'Datadrop fout';
+      $message['body'] = format_string($params['content'], $params['data']);
+      break;
+
   }
 }
 
@@ -423,11 +429,16 @@ function spdatadrop_push_contact($spdatadrop_syncstate) {
     return $push_result;
   }
   else {
-    watchdog('spdatadrop', 'Error pushing submission id @sid from @domain (@title).', array(
-      '@sid' => $spdatadrop_syncstate['submission_id'],
-      '@title' => $spdatadrop_syncstate['source_title'],
-      '@domain' => $spdatadrop_syncstate['source_domain'],
-    ));
+    $error_message = array(
+      'content' => 'Error pushing submission id @sid from @domain (@title).',
+      'data' => array(
+        '@sid' => $spdatadrop_syncstate['submission_id'],
+        '@title' => $spdatadrop_syncstate['source_title'],
+        '@domain' => $spdatadrop_syncstate['source_domain'],
+      ),
+    );
+    watchdog('spdatadrop', $error_message['content'], $error_message['data']);
+    $message = drupal_mail('spdatadrop', 'error', 'webmaster@sp.nl', language_default(), $error_message, 'webmaster@sp.nl');
   }
 }
 
