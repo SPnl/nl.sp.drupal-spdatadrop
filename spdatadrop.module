@@ -430,7 +430,7 @@ function spdatadrop_push_contact($spdatadrop_syncstate) {
   }
   else {
     $error_message = array(
-      'content' => 'Error pushing submission id @sid from @domain (@title).',
+      'content' => 'Error pushing submission id @sid from @domain (@title) from datadrop to CiviCRM.',
       'data' => array(
         '@sid' => $spdatadrop_syncstate['submission_id'],
         '@title' => $spdatadrop_syncstate['source_title'],
