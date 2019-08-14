@@ -87,6 +87,7 @@ function spdatadrop_settings_form($form, &$form_state) {
  * Sync.
  */
 function spdatadrop_form_sync($form, &$form_state) {
+  // Sync.
   $number = variable_get('spdatadrop_cron_number', 0);
   $number_pushed = 0;
   // First sync all form submissions.
@@ -96,6 +97,11 @@ function spdatadrop_form_sync($form, &$form_state) {
     $number_pushed = spdatadrop_unsubscribe_submissions($to_go);
   }
 
+  // Process callbacks.
+  spdatadrop_process_callbacks($number);
+
+
+  // Feedback.
   if (!empty($sync_ids)) {
     $text = '<div id="sync_now"><p>Formulier inzendingen die gesynced zijn (CiviCRM contact ids): ' . implode(', ', $sync_ids) . '</p>';
   }
