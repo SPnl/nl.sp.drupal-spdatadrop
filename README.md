@@ -69,6 +69,7 @@ Example Drupal code:
         * groups: array(132, 7834)
         * remove_groups: array(23535, 456)
         * sp_active: array(active, activities: array())
+        * sp_work_and_int: array(main_task: array(), industrial_sector, occupational_group, membership: array())
         * do_not_phone: (true, false)
         * is_opt_out: (true, false)
         * do_not_sms: (true, false)
