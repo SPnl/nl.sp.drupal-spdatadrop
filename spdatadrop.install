@@ -222,8 +222,8 @@ function spdatadrop_update_7004() {
 function spdatadrop_update_7005() {
   if (!db_table_exists('spdatadrop_unsubscribe')) {
     $schema = spdatadrop_schema();
-    $table_schema['spdatadrop_unsubscribe'];
-    db_create_table('spdatadrop_unsubscribe', $table_schema);
+    $spec = $schema['spdatadrop_unsubscribe'];
+    db_create_table('spdatadrop_unsubscribe', $spec);
   }
 }
 
