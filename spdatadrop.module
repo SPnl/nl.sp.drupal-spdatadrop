@@ -348,7 +348,14 @@ function spdatadrop_process_post_data() {
       if (isset($_POST['submission_data'])) {
         $fields = array();
         // Add submission data.
-        $fields['submission_data'] = json_encode($_POST['submission_data']);
+        // Check if json.
+        $decoded = json_decode($_POST['submission_data']);
+        if ($decoded && $_POST['submission_data'] != $decoded) {
+          $fields['submission_data'] = $_POST['submission_data'];
+        }
+        else {
+          $fields['submission_data'] = json_encode($_POST['submission_data']);
+        }
         // Add source data.
         if (isset($_POST['source_data'])) {
           $source_fields = array(
