@@ -279,6 +279,7 @@ function spdatadrop_store_submission_sync_state($syncstate, $state, $contact_id 
     db_update('spdatadrop_syncstate')
       ->fields(array(
         'state' => $new_state,
+        'date' => time(),
       ))
       ->condition('id', $syncstate['id'])
       ->execute();
