@@ -169,6 +169,43 @@ function spdatadrop_schema() {
       'id',
     ),
   );
+
+  $schema['spdatadrop_recent'] = array(
+    'description' => 'Recent synced e-mail adresses and phone numbers.',
+    'fields' => array(
+      'syncstate_id' => array(
+        'description' => 'Primary key.',
+        'type' => 'int',
+        'size' => 'big',
+        'not null' => TRUE,
+      ),
+      'date' => array(
+        'description' => 'The Unix timestamp when sync was succesfully pushed.',
+        'type' => 'int',
+        'not null' => FALSE,
+      ),
+      'email' => array(
+        'descripton' => 'Email address.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+      ),
+      'phone' => array(
+        'descripton' => 'Phone number.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+      ),
+    ),
+    'primary key' => array(
+      'syncstate_id',
+    ),
+    'indexes' => array(
+      'date' => array('date'),
+      'email' => array('email'),
+      'phone' => array('phone'),
+    ),
+  );
   return $schema;
 }
 
@@ -262,5 +299,36 @@ function spdatadrop_update_7007() {
   if (!db_field_exists('spdatadrop_syncstate', 'callback_state')) {
     $spec = $schema['spdatadrop_syncstate']['fields']['callback_state'];
     db_add_field('spdatadrop_syncstate', 'callback_state', $spec);
+  }
+}
+
+/**
+ * Adds table for recently pushed emails and phone numbers.
+ */
+function spdatadrop_update_7008() {
+  if (!db_table_exists('spdatadrop_recent')) {
+    $schema = spdatadrop_schema();
+    $spec = $schema['spdatadrop_recent'];
+    db_create_table('spdatadrop_recent', $spec);
+    // Make sure there is always a result when looking for existing data to prevent erratic behavior of query.
+    $def_data = array(
+      'syncstate_id' => 0,
+      'date' => 0,
+      'email' => 'xxx',
+      'phone' => 'xxx',
+    );
+    db_insert('spdatadrop_recent')
+      ->fields($def_data)
+      ->execute();
+    // Add existing not pushed yet drops.
+    $query = "SELECT * FROM {spdatadrop_syncstate} state LEFT JOIN {spdatadrop_recent} recent ON state.id = recent.syncstate_id WHERE state = 0 AND recent.syncstate_id IS NULL";
+    $result = db_query($query);
+    if ($result && $result->rowCount()) {
+      while ($row = $result->fetchAssoc()) {
+        $syncstate_id = $row['id'];
+        $submission_data = json_decode($row['submission_data'], TRUE);
+        spdatadrop_store_recent_data($submission_data, $syncstate_id);
+      }
+    }
   }
 }
