@@ -423,7 +423,7 @@ function spdatadrop_process_post_data() {
  */
 function spdatadrop_push_contacts($number = 1) {
   // Remove old recent data.
-  $query = "DELETE recent FROM spdatadrop_recent recent WHERE recent.date IS NOT NULL AND recent.date < :hour";
+  $query = "DELETE recent FROM spdatadrop_recent recent WHERE syncstate_id > 0 AND recent.date IS NOT NULL AND recent.date < :hour";
   db_query($query, array(
     ':hour' => time() - 3600,
   ));
