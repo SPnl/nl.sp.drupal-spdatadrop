@@ -461,6 +461,30 @@ function spdatadrop_push_contact($spdatadrop_syncstate) {
     'debug_info' => json_decode($spdatadrop_syncstate['debug_info'], TRUE),
     'source_data' => $source_data,
   );
+  // Check if email or phone were recently synced.
+  if (!empty($submission_data['telephone'])) {
+    $phone = spdatadrop_cleanup_phone($submission_data['telephone']);
+  }
+  if (!empty($submission_data['phone_mobile'])) {
+    $phone = spdatadrop_cleanup_phone($submission_data['phone_mobile']);
+  }
+  if (!empty($submission_data['email'])) {
+    $email = spdatadrop_cleanup_email($submission_data['email']);
+  }
+  if (!empty($phone)) {
+    $query = "SELECT phone FROM spdatadrop_recent WHERE date IS NOT NULL AND phone = :phone";
+    $result = db_query($query, array(':phone' => $phone));
+    if ($result->rowCount() > 0) {
+      return;
+    }
+  }
+  if (!empty($email)) {
+    $query = "SELECT email FROM spdatadrop_recent WHERE date IS NOT NULL AND email = :email";
+    $result = db_query($query, array(':email' => $email));
+    if ($result->rowCount() > 0) {
+      return;
+    }
+  }
   $push_result = spcivipush_push_contact($submission_data, $debug_info);
   spdatadrop_push_contact_process_result($spdatadrop_syncstate, $push_result);
 }
